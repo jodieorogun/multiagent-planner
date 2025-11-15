@@ -6,17 +6,21 @@ import torch.optim as optim
 class WorkloadNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(5, 16) # 5 input features, 16 hidden units
-        self.fc2 = nn.Linear(16, 4) # 4 output classes, representing workload levels
+        self.fc1 = nn.Linear(5, 64) # 5 input features, 16 hidden units
+        self.fc2 = nn.Linear(64, 16) # hidden layer
+        self.fc3 = nn.Linear(16, 16) # hidden layer
+        self.fc4 = nn.Linear(16, 4) # 4 output classes, representing workload levels
 
     def forward(self, x):
         x = torch.relu(self.fc1(x)) # hidden layer with ReLU activation
-        x = self.fc2(x)
+        x = torch.relu(self.fc2(x))
+        x = torch.relu(self.fc3(x))
+        x = self.fc4(x)
         return x
 
 
-def generateSyntheticData(num_samples: int = 400):
-    X = torch.rand(num_samples, 5) # creates 400 x 5 tensor with random values between 0 and 1
+def generateSyntheticData(num_samples: int = 500):
+    X = torch.rand(num_samples, 5) # creates tensor with random values between 0 and 1
     y = torch.zeros(num_samples, dtype=torch.long)
 
     for i in range(num_samples):
@@ -59,7 +63,9 @@ def trainWorkloadModel():
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(80): 
+    numEpochs = 300
+
+    for epoch in range(numEpochs): 
         optimizer.zero_grad() # clear gradients from previous step
         outputs = model(X)
         loss = criterion(outputs, y)
@@ -67,7 +73,7 @@ def trainWorkloadModel():
         optimizer.step()
 
         if (epoch + 1) % 20 == 0:
-            print(f"Epoch {epoch+1}/80 - Loss: {loss.item():.4f}")
+            print(f"Epoch {epoch+1}/{numEpochs} - Loss: {loss.item():.4f}")
 
     os.makedirs("saved_models", exist_ok=True)
     save_path = os.path.join("saved_models", "workloadNet.pth")
