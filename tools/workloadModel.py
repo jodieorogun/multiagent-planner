@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from typing import List
 
-
 class WorkloadNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -16,14 +15,14 @@ class WorkloadNet(nn.Module):
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
-        x = self.fc2(x)
+        x = self.fc4(x)
         return x
 
 def loadWorkloadModel(weightsPath: str = None) -> WorkloadNet:
     if weightsPath is None:
         weightsPath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            "savedModels",
+            "saved_models",
             "workloadNet.pth",
         )
 

@@ -1,30 +1,43 @@
+from agents.base import BaseAgent
 from typing import Any, Dict, List
-from agents.base_agent import BaseAgent
+import json
+
 
 class WriterAgent(BaseAgent):
     def run(self, message: Any, context: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+        # Extract context safely
+        planner = next((c.get("message") for c in context if c.get("agent") == "PlannerAgent"), None)
+        fitness = next((c.get("message") for c in context if c.get("agent") == "FitnessAgent"), None)
+        nutrition = next((c.get("message") for c in context if c.get("agent") == "NutritionAgent"), None)
+        critic_tool = next((c.get("toolResult") for c in context if c.get("agent") == "CriticAgent"), None)
+
+        # Build LLM prompt — escape all JSON braces with double {{ }}
         prompt = f"""
 You are WriterAgent.
+Your job is to combine planning, workouts, nutrition, and stress level into a clean, human-readable weekly plan.
 
-Combine ALL the info in the context into a clear, realistic weekly plan.
+Here is all the structured data:
 
-context:
-{context}
+Planner output:
+{json.dumps(planner, indent=2)}
 
-latest message:
-{message}
+Fitness output:
+{json.dumps(fitness, indent=2)}
 
-Produce a final plan that includes:
-- Day-by-day breakdown (Mon-Sun)
-- Workout per day (or rest)
-- Key study focus blocks
-- Short nutrition notes (calories + simple meals)
-- Any adjustments based on workload (e.g., move workouts, add rest)
+Nutrition output:
+{json.dumps(nutrition, indent=2)}
 
-Return ONLY JSON:
+Critic stress score (0–3):
+{critic_tool}
+
+Produce a warm, encouraging weekly plan. Use natural language.
+RETURN STRICT JSON:
+
 {{
   "type": "message",
-  "content": "final weekly plan as a multi-line string"
+  "content": "<the final written weekly plan>"
 }}
 """
+
         return self.llm(prompt)

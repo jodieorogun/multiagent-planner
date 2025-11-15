@@ -1,36 +1,86 @@
+from agents.base import BaseAgent
 from typing import Any, Dict, List
-from agents.base_agent import BaseAgent
+
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
 
 class FitnessAgent(BaseAgent):
-    def run(self, message: Any, context: List[Dict[str, Any]]) -> Dict[str, Any]:
-        prompt = f"""
-You are FitnessAgent.
+    def __init__(self, name, llm=None):
+        super().__init__(name, llm)
 
-User's planning data:
-{message}
+    def run(self, message: Dict[str, Any], context: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Expected message from PlannerAgent:
+        {
+          "academicTasks": [...],
+          "sportsCommitments": [...],
+          "workoutGoals": [...],
+          "constraints": [...]
+        }
+        """
 
-Use:
-- sportsCommitments (e.g., lacrosse match, training)
-- workoutGoals (e.g., gym 4x per week)
-- constraints (e.g., "no heavy legs before match", "sleep >= 7 hours")
+        academicTasks = message.get("academicTasks", [])
+        sportsCommitments = message.get("sportsCommitments", [])
+        workoutGoals = message.get("workoutGoals", [])
 
-Design a weekly workout plan: Monday to Sunday.
+        workoutPlan = {day: "" for day in WEEKDAYS}
 
-Return ONLY JSON:
-{{
-  "type": "message",
-  "content": {{
-    "workoutPlan": {{
-      "Monday": "Push",
-      "Tuesday": "Pull",
-      "Wednesday": "Match day - rest",
-      "Thursday": "Legs",
-      "Friday": "Push",
-      "Saturday": "Active recovery",
-      "Sunday": "Rest"
-    }}
-  }}
-}}
-Fill in realistic values based on the user data.
-"""
-        return self.llm(prompt)
+        # -----------------------------
+        # 1) Place fixed sports events
+        # -----------------------------
+        sportsByDay = {}
+
+        for sc in sportsCommitments:
+            day = sc.get("day")
+            name = sc.get("activity") or sc.get("name") or "Sports"
+
+            if not day:
+                continue
+
+            short = day[:3].title()
+            if short not in workoutPlan:
+                continue
+
+            sportsByDay.setdefault(short, []).append(name)
+
+        for d, events in sportsByDay.items():
+            workoutPlan[d] = " / ".join(events)
+
+        # -----------------------------
+        # 2) Gym session extraction
+        # -----------------------------
+        gymSessions = 0
+        for wg in workoutGoals:
+            if wg.get("activity", "").lower() in ["gym", "gymming", "workout"]:
+                freq = wg.get("frequency")
+                try:
+                    gymSessions = int(freq)
+                except:
+                    pass
+
+        # -----------------------------
+        # 3) Place gym sessions
+        # -----------------------------
+        if gymSessions > 0:
+            preferredOrder = ["Mon", "Tue", "Thu", "Sat", "Sun", "Fri", "Wed"]
+            used = 0
+
+            for day in preferredOrder:
+                if used >= gymSessions:
+                    break
+
+                if workoutPlan[day] == "":
+                    workoutPlan[day] = "Gym"
+                    used += 1
+                else:
+                    # if not a match day, combine
+                    if "match" not in workoutPlan[day].lower():
+                        workoutPlan[day] += " + Gym"
+                        used += 1
+
+        return {
+            "type": "message",
+            "content": {
+                "workoutPlan": workoutPlan
+            }
+        }

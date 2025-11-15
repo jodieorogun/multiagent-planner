@@ -1,37 +1,40 @@
+from agents.base import BaseAgent
 from typing import Any, Dict, List
-from agents.base_agent import BaseAgent
+
 
 class NutritionAgent(BaseAgent):
-    def run(self, message: Any, context: List[Dict[str, Any]]) -> Dict[str, Any]:
-        prompt = f"""
-You are NutritionAgent.
+    def __init__(self, name, llm=None):
+        super().__init__(name, llm)
 
-You will receive:
-- workoutPlan for the week
-- constraints (like sleep, energy, weight goals) in the context if needed
+    def run(self, message: Dict[str, Any], context: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        message is the 'content' from FitnessAgent:
+        {
+          "workoutPlan": { "Mon": "...", ... }
+        }
+        """
+        workoutPlan = message.get("workoutPlan", {})
 
-Input:
-{message}
+        # baseline calories
+        totalWorkouts = sum(1 for v in workoutPlan.values() if "gym" in v.lower())
+        if totalWorkouts >= 4:
+            dailyCalories = 2200
+        else:
+            dailyCalories = 2000
 
-Design a simple weekly nutrition outline with:
-- dailyCalories (average)
-- matchDayExtraCalories (if sports match)
-- simpleMeals (list of easy, repeatable ideas)
-- notes (short guidance)
+        matchDayExtra = 300 if any("match" in v.lower() for v in workoutPlan.values()) else 0
 
-Return ONLY JSON:
-{{
-  "type": "message",
-  "content": {{
-    "dailyCalories": 1900,
-    "matchDayExtraCalories": 300,
-    "simpleMeals": [
-      "Greek yogurt with granola",
-      "Microwave rice + chicken",
-      "Tuna wrap + salad"
-    ],
-    "notes": "Short overall notes..."
-  }}
-}}
-"""
-        return self.llm(prompt)
+        meals = [
+            "Breakfast: Greek yogurt + granola",
+            "Lunch: Rice, chicken, and veg",
+            "Dinner: High-protein pasta",
+        ]
+
+        return {
+            "type": "message",
+            "content": {
+                "dailyCalories": dailyCalories,
+                "matchDayExtra": matchDayExtra,
+                "meals": meals,
+            }
+        }

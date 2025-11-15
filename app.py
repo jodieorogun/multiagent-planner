@@ -1,6 +1,5 @@
-from core.llm import callLlm
+from core.llm import call_llm
 from core.agentManager import AgentManager
-
 from agents.plannerAgent import PlannerAgent
 from agents.fitnessAgent import FitnessAgent
 from agents.nutritionAgent import NutritionAgent
@@ -9,7 +8,7 @@ from agents.writerAgent import WriterAgent
 
 
 def llm(prompt: str):
-    return callLlm(prompt)
+    return call_llm(prompt)
 
 
 def main():
@@ -30,9 +29,7 @@ def main():
     agentManager = AgentManager(agents)
 
     userRequest = (
-        "plan my week: I have a lacrosse match on Wednesday, "
-        "2 training sessions, 3 evenings of study, a coursework deadline on Friday, "
-        "I want to gym 4 times and still sleep at least 7 hours."
+        "plan my week: I have a lacrosse match on Wednesday, 2 training sessions, 3 evenings of study, a coursework deadline on Friday, I want to gym 4 times and still sleep at least 7 hours."
     )
 
     finalPlan = agentManager.process(userRequest)
