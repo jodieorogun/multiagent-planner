@@ -12,17 +12,29 @@ class AgentManager:
     def handleToolCall(self, toolName: str, args):
         if toolName not in self.toolRegistry:
             return {"error": f"Unknown tool '{toolName}'"}
+
         toolFn = self.toolRegistry[toolName]
 
-        if isinstance(args, (list, tuple)):
-            return toolFn(args)
-        else:
-            return toolFn([args])
+        # --- VALIDATION PATCH ---
+        if not isinstance(args, (list, tuple)):
+            return {"error": "Tool args must be a list"}
+
+        clean_args = []
+        for a in args:
+            try:
+                clean_args.append(float(a))
+            except:
+                return {"error": f"Invalid numeric value for workloadPredictor: {a}"}
+
+        return toolFn(clean_args)
 
     def process(self, userRequest: str) -> Any:
         message: Any = userRequest
 
         for agent in self.agents:
+            print(f"\n--- RUNNING {agent.name} ---")
+            print(f"input message: {message}\n")
+
             agentOutput = agent.run(message, self.context)
 
             outputType = agentOutput.get("type")
@@ -62,5 +74,6 @@ class AgentManager:
                     }
                 )
                 message = agentOutput
-
+           
+            print(f"output from {agent.name}: {agentOutput}\n")
         return message
