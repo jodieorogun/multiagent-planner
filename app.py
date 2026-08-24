@@ -1,44 +1,44 @@
-from core.llm import call_llm
-from core.agentManager import AgentManager
-from agents.plannerAgent import PlannerAgent
-from agents.fitnessAgent import FitnessAgent
-from agents.nutritionAgent import NutritionAgent
-from agents.criticAgent import CriticAgent
-from agents.writerAgent import WriterAgent
+import argparse
+import json
+
+from core import AgentManager
 
 
-def llm(prompt: str):
-    return call_llm(prompt)
+DEFAULT_REQUEST = (
+    "Plan my week: I have a lacrosse match on Wednesday, training on Tuesday, "
+    "3 evenings to study, a coursework deadline on Friday, I want to gym 4 "
+    "times and sleep at least 7 hours."
+)
 
 
-def main():
-    plannerAgent = PlannerAgent(name="PlannerAgent", llm=llm)
-    fitnessAgent = FitnessAgent(name="FitnessAgent", llm=llm)
-    nutritionAgent = NutritionAgent(name="NutritionAgent", llm=llm)
-    criticAgent = CriticAgent(name="CriticAgent", llm=llm)
-    writerAgent = WriterAgent(name="WriterAgent", llm=llm)
-
-    agents = [
-        plannerAgent,
-        fitnessAgent,
-        nutritionAgent,
-        criticAgent,
-        writerAgent,
-    ]
-
-    agentManager = AgentManager(agents)
-
-    userRequest = (
-        "plan my week: I have a lacrosse match on Wednesday, Training on a Tuesday evening, 3 evenings that i need to study, a coursework deadline on Friday, I want to gym 4 times and still sleep at least 7 hours."
+def build_parser():
+    parser = argparse.ArgumentParser(
+        description="Create a basic weekly plan using a deterministic agent pipeline."
     )
+    parser.add_argument(
+        "request",
+        nargs="?",
+        default=DEFAULT_REQUEST,
+        help="A short description of your weekly commitments.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable JSON instead of the formatted plan.",
+    )
+    return parser
 
-    finalPlan = agentManager.process(userRequest)
-    print("\n=== FINAL WEEKLY PLAN ===\n")
-    if isinstance(finalPlan, dict) and "content" in finalPlan:
-        print(finalPlan["content"])
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+    plan = AgentManager().process(args.request)
+
+    if args.json:
+        print(json.dumps(plan.to_dict(), indent=2))
     else:
-        print(finalPlan)
+        print(plan.render())
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

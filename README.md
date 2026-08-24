@@ -1,104 +1,80 @@
 # Multi-Agent Planner
 
-Multi-Agent Planner is a local Python prototype that turns a natural-language description of a busy week into a structured weekly plan. It passes the request through a sequence of specialist agents, uses a small PyTorch model to estimate workload risk, and asks a local Ollama model to produce the final schedule.
+A small, dependency-free Python prototype that turns a short description of a busy week into a seven-day plan.
 
-## How it works
+The goal of this branch is deliberately modest: demonstrate a clear multi-agent workflow that anyone can clone, run, read, and test in a few minutes. The agents use transparent Python rules, so the demo does not require an API key, a local language model, or trained model weights.
 
-The pipeline runs five agents in order:
+## Demo
 
-1. **PlannerAgent** extracts academic tasks, sports commitments, workout goals, and constraints from the request.
-2. **FitnessAgent** places fixed sports events and gym sessions across the week.
-3. **NutritionAgent** adds a simple meal plan and extra fuel guidance for match days.
-4. **CriticAgent** converts the extracted commitments into five workload features and calls the PyTorch workload classifier.
-5. **WriterAgent** combines the earlier outputs into a seven-day plan with a short workload note.
-
-`AgentManager` coordinates the pipeline and keeps the outputs from earlier agents available as context for later ones.
-
-## Project structure
-
-```text
-.
-├── agents/                   # Planner, fitness, nutrition, critic, and writer agents
-├── core/
-│   ├── agentManager.py       # Agent orchestration and tool-call handling
-│   └── llm.py                # Local Ollama integration and JSON parsing
-├── tools/
-│   ├── trainWorkloadModel.py # Synthetic-data training script
-│   └── workloadModel.py      # Model loading and workload prediction
-├── app.py                    # End-to-end example
-├── testPlanner.py            # PlannerAgent smoke-test script
-└── requirements.txt
-```
-
-## Requirements
-
-- Python 3.10 or newer
-- [Ollama](https://ollama.com/) installed and running
-- The `qwen2.5-coder:1.5b` Ollama model
-
-## Setup
-
-Create and activate a virtual environment, then install the pinned dependencies:
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Pull the local language model used by `core/llm.py`:
-
-```bash
-ollama pull qwen2.5-coder:1.5b
-```
-
-Train the workload classifier once before running the full application:
-
-```bash
-python tools/trainWorkloadModel.py
-```
-
-This creates `saved_models/workloadNet.pth`. The generated model is intentionally ignored by Git.
-
-## Run the planner
+Run the included example:
 
 ```bash
 python app.py
 ```
 
-The example request is currently defined in `app.py`. Edit `userRequest` there to plan a different week. The application logs each agent's input and output, followed by the final weekly plan.
-
-To exercise only the request-parsing stage, run:
+Or provide your own request:
 
 ```bash
-python testPlanner.py
+python app.py "Lacrosse match on Wednesday, training on Tuesday, gym 3 times and 2 evenings to study"
 ```
 
-## Workload model
+For machine-readable output:
 
-The classifier predicts one of four workload levels:
+```bash
+python app.py "Gym 2 times and sleep 8 hours" --json
+```
 
-| Value | Meaning |
-| --- | --- |
-| `0` | Light workload |
-| `1` | Moderate workload |
-| `2` | High workload |
-| `3` | Burnout risk |
+Python 3.9 or newer is recommended. There are no third-party runtime dependencies.
 
-It uses five inputs: study hours, sport hours, work hours, number of deadlines, and sleep hours. The training script generates synthetic examples from a hand-written scoring rule, so the result is a demonstration model rather than a clinically validated assessment.
+## Agent pipeline
 
-## Current limitations
+The agents run in a simple sequence:
 
-- The planner runs a fixed example request; there is not yet a command-line or web interface.
-- Agent execution is sequential, despite the multi-agent design.
-- Several workload estimates are heuristic, and the classifier is trained on synthetic data.
-- Output quality depends on the local model consistently returning the requested JSON shape.
-- The Ollama model name and the 20-second response timeout are currently hard-coded in `core/llm.py`.
-- There is no automated test suite yet; `testPlanner.py` is a manual smoke test.
+1. **PlannerAgent** extracts supported commitments and constraints.
+2. **FitnessAgent** preserves fixed sports events and places gym sessions.
+3. **NutritionAgent** adds a conservative match-day fuel reminder.
+4. **CriticAgent** calculates a transparent workload score.
+5. **WriterAgent** merges everything into a readable weekly plan.
 
-## Customisation
+`AgentManager` owns the handoff between agents. Each agent has one small responsibility and can be tested independently.
 
-- Change `MODEL_NAME` in `core/llm.py` to use another Ollama model.
-- Adjust agent prompts and scheduling rules in `agents/`.
-- Retrain or replace the workload classifier via `tools/trainWorkloadModel.py`.
-- Register additional callable tools in `AgentManager.toolRegistry`.
+## Supported phrases
+
+This basic parser intentionally supports a narrow set of phrases:
+
+- `match on Wednesday`
+- `training on Tuesday`
+- `3 evenings to study`
+- `coursework deadline on Friday`
+- `gym 4 times`
+- `sleep at least 7 hours`
+
+It is a prototype, not a general natural-language planner. Keeping the rules explicit makes the behaviour repeatable and the design easy to explain.
+
+## Tests
+
+The test suite uses Python's standard library:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+It covers request parsing, the end-to-end agent pipeline, event placement, workload output, and JSON CLI output.
+
+## Project structure
+
+```text
+.
+├── agents/          # Five focused planning agents
+├── core/            # Shared data models and orchestration
+├── tests/           # Small unittest suite
+├── app.py           # Command-line entry point
+└── README.md
+```
+
+## Sensible next steps
+
+- Add richer phrase extraction behind the same `PlannerAgent` interface.
+- Let users provide unavailable times and preferred study days.
+- Replace the heuristic parser with an optional LLM adapter.
+- Add persistence or a small web interface only after the core behaviour is stable.

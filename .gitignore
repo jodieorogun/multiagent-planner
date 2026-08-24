@@ -1,5 +1,10 @@
+.venv/
 venv/
 .env
 __pycache__/
 *.pyc
-saved_models/
+.coverage
+.pytest_cache/
+.DS_Store
+build/
+dist/
