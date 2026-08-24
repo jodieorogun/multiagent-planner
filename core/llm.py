@@ -1,65 +1,75 @@
-import subprocess, json, re
-
-MODEL_NAME = "qwen2.5-coder:1.5b"
-
-def call_llm(prompt: str) -> dict:
-    full_prompt = f"""
-You MUST respond ONLY with valid JSON.
-Absolutely NO text before or after the JSON block.
-
-{prompt}
-"""
-
-    process = subprocess.Popen(
-        ["ollama", "run", MODEL_NAME],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-
-    try:
-        output, _ = process.communicate(full_prompt.encode("utf-8"), timeout=20)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        return {"type": "message", "content": "LLM timed out — response skipped."}
-
-    raw = output.decode().strip()
-
-    parsed = extract_json_strong(raw)
-    if parsed is not None:
-        return parsed
-
-    # LAST RESORT — give the raw text
-    return {"type": "message", "content": raw}
+import json
+import os
+import subprocess
+import sys
+from typing import Any, Dict
 
 
-def extract_json_strong(text: str):
-    """
-    Extract the first JSON object from a string, even if the model adds text.
-    Fixes minor JSON formatting errors.
-    """
+DEFAULT_MODEL = "qwen2.5:3b"
+DEFAULT_TIMEOUT_SECONDS = 45
 
-    # 1. Find anything that *looks* like JSON object
-    candidates = re.findall(r"\{(?:.|\n)*\}", text)
 
-    for c in candidates:
-        # 2. Try raw first
-        try:
-            return json.loads(c)
-        except:
-            pass
+class LLMError(RuntimeError):
+    """Raised when Ollama cannot provide a usable response."""
 
-        # 3. Try minor repairs
-        fixed = (
-            c.replace("'", '"')       # single → double quotes
-             .replace("None", "null") # python null
-             .replace("Null", "null")
-             .replace("NULL", "null")
-        )
 
-        try:
-            return json.loads(fixed)
-        except:
+def extract_json_object(text: str) -> Dict[str, Any]:
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(text):
+        if character != "{":
             continue
+        try:
+            value, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    raise LLMError("Ollama returned no valid JSON object")
 
-    return None
+
+class OllamaClient:
+    def __init__(
+        self, model: str = None, timeout_seconds: int = None, debug: bool = False
+    ):
+        self.model = model or os.getenv("OLLAMA_MODEL", DEFAULT_MODEL)
+        self.timeout_seconds = timeout_seconds or int(
+            os.getenv("OLLAMA_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS)
+        )
+        self.debug = debug
+
+    def complete(self, prompt: str) -> Dict[str, Any]:
+        strict_prompt = (
+            "Respond with one valid JSON object only. Do not use Markdown fences.\n\n"
+            + prompt
+        )
+        try:
+            process = subprocess.run(
+                [
+                    "ollama",
+                    "run",
+                    self.model,
+                    "--format",
+                    "json",
+                    "--nowordwrap",
+                ],
+                input=strict_prompt,
+                text=True,
+                capture_output=True,
+                timeout=self.timeout_seconds,
+                check=False,
+            )
+        except FileNotFoundError as exc:
+            raise LLMError(
+                "Ollama is not installed or is not available on PATH"
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise LLMError(
+                f"Ollama did not respond within {self.timeout_seconds} seconds"
+            ) from exc
+
+        if process.returncode != 0:
+            detail = process.stderr.strip() or "unknown Ollama error"
+            raise LLMError(f"Ollama failed: {detail}")
+        if self.debug:
+            print(f"[ollama:{self.model}] {process.stdout.strip()}", file=sys.stderr)
+        return extract_json_object(process.stdout)
