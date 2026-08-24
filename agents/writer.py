@@ -47,16 +47,27 @@ class WriterAgent:
         for day in DAYS:
             summary = plan.weekly_plan[day]
             required = draft[day]
-            if required and not all(
-                item.lower() in summary.lower() for item in required
-            ):
+            summary_lower = summary.lower()
+            has_wrong_count = any(
+                summary_lower.count(item.lower()) != required.count(item)
+                for item in set(required)
+            )
+            if required and has_wrong_count:
                 summary = " / ".join(required)
+                repaired = True
+            elif not required and not summary_lower.startswith("rest"):
+                summary = "Rest"
                 repaired = True
             protected_plan[day] = summary or "Rest"
 
+        stress_note = plan.stress_note
+        if workload.label.lower() not in stress_note.lower():
+            stress_note = workload.note
+            repaired = True
+
         return FinalPlan(
             weekly_plan=protected_plan,
-            stress_note=plan.stress_note or workload.note,
+            stress_note=stress_note,
             writer_mode="ollama+validated" if repaired else "ollama",
         )
 

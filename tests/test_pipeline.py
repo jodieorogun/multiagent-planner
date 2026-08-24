@@ -20,7 +20,10 @@ def writer_response():
     )
     return {
         "type": "message",
-        "content": {"weeklyPlan": plan, "stressNote": "Keep one evening flexible."},
+        "content": {
+            "weeklyPlan": plan,
+            "stressNote": "High workload: keep one evening flexible.",
+        },
     }
 
 
@@ -54,6 +57,18 @@ class PipelineTests(unittest.TestCase):
 
         self.assertEqual(result.writer_mode, "fallback")
         self.assertIn("Training", result.weekly_plan["Tuesday"])
+
+    def test_writer_repairs_duplicate_activities(self):
+        duplicated_writer_plan = writer_response()
+        duplicated_writer_plan["content"]["weeklyPlan"]["Monday"] = (
+            "Study, Gym and another Study session"
+        )
+        llm = ScriptedLLM(planner_response(), duplicated_writer_plan)
+
+        result = AgentManager(llm).process("plan my week")
+
+        self.assertEqual(result.writer_mode, "ollama+validated")
+        self.assertEqual(result.weekly_plan["Monday"], "Gym / Study")
 
 
 if __name__ == "__main__":

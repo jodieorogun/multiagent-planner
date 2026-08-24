@@ -1,0 +1,38 @@
+[
+  {
+    "name": "busy_student_athlete",
+    "request": "Plan my week: I have a lacrosse match on Wednesday, training on Tuesday evening, 3 evenings to study, a coursework deadline on Friday, I want to gym 4 times and still sleep at least 7 hours.",
+    "expectations": {
+      "fixed_events": [
+        {"day": "Tuesday", "text": "Training"},
+        {"day": "Wednesday", "text": "Lacrosse match"},
+        {"day": "Friday", "text": "Coursework deadline"}
+      ],
+      "exact_counts": {"Gym": 4, "Study": 3},
+      "workload": "high"
+    }
+  },
+  {
+    "name": "weekend_match",
+    "request": "Plan my week: I have a football match on Saturday, 2 evenings to study, I want to gym 2 times and sleep at least 8 hours.",
+    "expectations": {
+      "fixed_events": [
+        {"day": "Saturday", "text": "Football match"}
+      ],
+      "exact_counts": {"Gym": 2, "Study": 2},
+      "workload": "light"
+    }
+  },
+  {
+    "name": "training_and_deadline",
+    "request": "Plan my week: training on Monday, a coursework deadline on Thursday, 1 evening to study, gym 1 time and sleep 7 hours.",
+    "expectations": {
+      "fixed_events": [
+        {"day": "Monday", "text": "Training"},
+        {"day": "Thursday", "text": "Coursework deadline"}
+      ],
+      "exact_counts": {"Gym": 1, "Study": 1},
+      "workload": "moderate"
+    }
+  }
+]

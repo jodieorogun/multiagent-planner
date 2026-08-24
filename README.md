@@ -65,6 +65,16 @@ python -m unittest discover -s tests -v
 
 The suite covers JSON extraction, the planner contract, the full five-agent pipeline, workload prediction, fixed-event validation, and malformed writer-output fallback.
 
+## Small live eval
+
+The evaluation set runs three representative requests through the real Ollama pipeline and checks fixed-day events, gym and study counts, and workload labels:
+
+```bash
+python -m evals.run_eval
+```
+
+Use `--json` for structured results or `--model NAME` to evaluate another installed Ollama model. The command exits with a non-zero status if any scenario fails, making it suitable for a lightweight local quality gate.
+
 ## Project structure
 
 ```text
@@ -78,6 +88,7 @@ The suite covers JSON extraction, the planner contract, the full five-agent pipe
 │   ├── workload_model.py      # Heuristic and optional neural prediction
 │   └── train_workload_model.py
 ├── tests/                     # Offline unit and pipeline tests
+├── evals/                     # Live Ollama scenarios and scorer
 ├── app.py                     # Command-line entry point
 ├── requirements.txt           # No base Python packages required
 └── requirements-ml.txt        # Optional PyTorch dependency
