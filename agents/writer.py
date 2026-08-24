@@ -8,6 +8,7 @@ from core.models import (
     FinalPlan,
     NutritionPlan,
     PlanningBrief,
+    ScheduleDraft,
     SchemaError,
     WorkloadAssessment,
 )
@@ -30,17 +31,17 @@ class WriterAgent:
     def run(
         self,
         brief: PlanningBrief,
-        workout_plan,
+        schedule: ScheduleDraft,
         nutrition: NutritionPlan,
         workload: WorkloadAssessment,
     ) -> FinalPlan:
-        draft = self._build_draft(brief, workout_plan, nutrition)
-        prompt = self._build_prompt(draft, workload)
+        draft = self._build_draft(brief, schedule, nutrition)
+        prompt = self._build_prompt(draft, workload, schedule.conflicts)
 
         try:
             plan = FinalPlan.from_llm_response(self.llm(prompt))
         except (LLMError, SchemaError):
-            return self._fallback_plan(draft, workload, "fallback")
+            return self._fallback_plan(draft, workload, schedule.conflicts, "fallback")
 
         protected_plan = {}
         repaired = False
@@ -69,10 +70,14 @@ class WriterAgent:
             weekly_plan=protected_plan,
             stress_note=stress_note,
             writer_mode="ollama+validated" if repaired else "ollama",
+            workload=workload,
+            conflicts=schedule.conflicts,
         )
 
-    def _build_draft(self, brief, workout_plan, nutrition):
-        draft = {day: list(workout_plan[day]) for day in DAYS}
+    def _build_draft(self, brief, schedule, nutrition):
+        draft = {
+            day: [event.name for event in schedule.days[day]] for day in DAYS
+        }
 
         for task in brief.academic_tasks:
             if task.day:
@@ -87,14 +92,12 @@ class WriterAgent:
             for day in available_days[: task.frequency]:
                 draft[day].append(task.task)
 
-        for day in nutrition.extra_fuel_days:
-            draft[day].append(
-                f"Extra match fuel (+{nutrition.extra_calories_amount} calories)"
-            )
+        for day, note in nutrition.daily_notes.items():
+            draft[day].append(note)
         return draft
 
     @staticmethod
-    def _build_prompt(draft, workload):
+    def _build_prompt(draft, workload, conflicts):
         output_schema = {
             "type": "message",
             "content": {
@@ -111,10 +114,12 @@ class WriterAgent:
             + json.dumps(draft, indent=2)
             + "\n\nWorkload assessment:\n"
             + json.dumps(asdict(workload), indent=2)
+            + "\n\nScheduling conflicts to mention if relevant:\n"
+            + json.dumps(conflicts, indent=2)
         )
 
     @staticmethod
-    def _fallback_plan(draft, workload, mode):
+    def _fallback_plan(draft, workload, conflicts, mode):
         return FinalPlan(
             weekly_plan={
                 day: " / ".join(activities) if activities else "Rest"
@@ -122,4 +127,6 @@ class WriterAgent:
             },
             stress_note=workload.note,
             writer_mode=mode,
+            workload=workload,
+            conflicts=conflicts,
         )

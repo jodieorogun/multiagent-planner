@@ -12,6 +12,8 @@ A small multi-agent weekly-planning prototype built around a local Ollama model.
 
 The LLM is used where language understanding and writing are useful. Scheduling rules and validation stay in Python so the result is predictable.
 
+The schedule now carries event metadata internally—duration, priority, and source—so later improvements can reason about time rather than only matching activity names. The final result also includes daily workload estimates, the peak day, and any day that exceeds the current eight-hour planning threshold.
+
 ## Quick start
 
 Requirements:
@@ -40,6 +42,16 @@ python app.py --json
 The default prototype has no third-party Python dependency. Set `OLLAMA_MODEL` or pass `--model` to use a different local model. Set `OLLAMA_TIMEOUT_SECONDS` or pass `--timeout` to change the response timeout.
 
 Use `--debug` to print the raw Ollama responses to stderr when adjusting prompts or trying another model.
+
+## Browser demo
+
+For a simple visual demo, start the standard-library web interface:
+
+```bash
+python web_app.py
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000), enter a request, and submit it. Use `--port` or `--model` to customise the server.
 
 ## Optional neural workload model
 
@@ -90,6 +102,7 @@ Use `--json` for structured results or `--model NAME` to evaluate another instal
 ├── tests/                     # Offline unit and pipeline tests
 ├── evals/                     # Live Ollama scenarios and scorer
 ├── app.py                     # Command-line entry point
+├── web_app.py                 # Small browser interface
 ├── requirements.txt           # No base Python packages required
 └── requirements-ml.txt        # Optional PyTorch dependency
 ```

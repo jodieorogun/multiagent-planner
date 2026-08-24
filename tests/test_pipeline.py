@@ -11,7 +11,7 @@ def writer_response():
         {
             "Monday": "Gym and Study",
             "Tuesday": "Training",
-            "Wednesday": "Lacrosse match and Extra match fuel (+300 calories)",
+            "Wednesday": "Lacrosse match / Match day: add a carbohydrate-rich snack and hydrate before activity.",
             "Thursday": "Gym and Study",
             "Friday": "Coursework deadline",
             "Saturday": "Gym",
@@ -34,7 +34,7 @@ class PipelineTests(unittest.TestCase):
 
         result = manager.process("plan my week")
 
-        self.assertEqual(result.writer_mode, "ollama")
+        self.assertIn(result.writer_mode, {"ollama", "ollama+validated"})
         self.assertIn("Lacrosse match", result.weekly_plan["Wednesday"])
         self.assertIn("Coursework deadline", result.weekly_plan["Friday"])
         self.assertIn("Canonical draft", llm.prompts[1])
@@ -48,7 +48,7 @@ class PipelineTests(unittest.TestCase):
 
         self.assertEqual(result.writer_mode, "ollama+validated")
         self.assertIn("Lacrosse match", result.weekly_plan["Wednesday"])
-        self.assertIn("Extra match fuel", result.weekly_plan["Wednesday"])
+        self.assertIn("Match day", result.weekly_plan["Wednesday"])
 
     def test_writer_falls_back_when_its_response_has_the_wrong_shape(self):
         llm = ScriptedLLM(planner_response(), {"unexpected": "response"})

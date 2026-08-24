@@ -20,6 +20,6 @@ class AgentManager:
     def process(self, user_request: str):
         brief = self.planner.run(user_request)
         workout_plan = self.fitness.run(brief)
-        nutrition = self.nutrition.run(workout_plan)
-        workload = self.critic.run(brief)
+        nutrition = self.nutrition.run(brief, workout_plan)
+        workload = self.critic.run(brief, workout_plan)
         return self.writer.run(brief, workout_plan, nutrition, workload)

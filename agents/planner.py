@@ -96,7 +96,9 @@ class PlannerAgent:
                 for task in academic_tasks
             ):
                 name = "Coursework deadline" if "coursework" in lowered else "Deadline"
-                academic_tasks.append(AcademicTask(task=name, day=day))
+                academic_tasks.append(
+                    AcademicTask(task=name, day=day, duration_hours=4.0)
+                )
 
         study_match = re.search(
             r"\b(\d+)\s+(?:evenings?|sessions?)\b.{0,35}\bstud(?:y|ying)\b",
